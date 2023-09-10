@@ -1,28 +1,5 @@
 const Book = require('../models/bookmodels')
 
-const getAllBooksStatic = async (req, res) => {
-
-    const queryObject = {
-        title: ""
-    }
-    // queryObject.title = "1st book"
-
-
-
-    const book = await Book.find({}).sort('publishYear -author')
-    // book = await book.find()
-
-    res.status(200).json({ book })
-
-
-
-
-}
-
-// const getReviewStatic = async(req , res)=>{
-//     const review = await
-// }
-
 const getAllBooks = async (req, res) => {
     // res.send('get all books');
 
@@ -72,12 +49,18 @@ const getAllBooks = async (req, res) => {
 
 const getBook = async (req, res) => {
     const { id } = req.params
+    // const a = "mayank"
     const book = await Book.findById(id)
-    res.status(200).json({ book })
+    console.log(book)
+    res.status(200).json( book )
+    // res.status(200).json( a )
+
 }
 
 const insertBook = async (req, res) => {
+
     const book = await Book.create(req.body)
+
     res.status(200).json({ book })
 }
 
@@ -108,12 +91,9 @@ const addReview = async (req, res) => {
         comment: req.body.comment,
         reviewer: req.body.reviewer
     }
-
     const book = await Book.findById(id);
     book.reviews.push(new_review);
     await book.save();
-    console.log(book);
-
     res.status(200).json({ book });
 
 }
@@ -122,12 +102,7 @@ const getReview = async (req, res) => {
     const { id, r_id } = req.params
     const book = await Book.findById(id);
     const review = book.reviews.find((r) => r._id.equals(r_id));
-
-    console.log("found");
-
     res.status(200).json({ review });
-    // res.send("found")
-
 }
 
 const updateReview = async (req, res) => {
@@ -136,7 +111,6 @@ const updateReview = async (req, res) => {
     const reviewIndex = book.reviews.findIndex((r) => r._id.equals(r_id));
     const { rating, comment, reviewer } = req.body
     const review = book.reviews[reviewIndex]
-    
     if (rating) {
         book.reviews[reviewIndex].rating = rating
     }
@@ -147,23 +121,19 @@ const updateReview = async (req, res) => {
         book.reviews[reviewIndex].reviewer = reviewer;
     }
     book.save();
-    res.status(200).json({review})
+    res.status(200).json({ review })
 }
 
-const deleteReview = async (req , res)=>{
+const deleteReview = async (req, res) => {
     const { id, r_id } = req.params
     const book = await Book.findById(id);
     const reviewIndex = book.reviews.findIndex((r) => r._id.equals(r_id));
     const review = book.reviews[reviewIndex];
     book.reviews.splice(reviewIndex, 1);
-
     await book.save();
-    res.status(200).json({review})
+    res.status(200).json({ review })
 }
 
-
-
-
 module.exports = {
-    getAllBooksStatic, getAllBooks, getBook, insertBook, deleteBook, updateBook, addReview, updateReview, getReview,deleteReview
+    getAllBooks, getBook, insertBook, deleteBook, updateBook, addReview, updateReview, getReview, deleteReview
 }

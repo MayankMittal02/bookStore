@@ -9,6 +9,11 @@ const bookSchema = new mongoose.Schema({
     publishYear: Number,
     inStock: Boolean,
     price: Number,
+    createdBy: {
+        type: mongoose.Types.ObjectId,
+        ref: 'User',
+        required: [true, 'Please provide user'],
+    },
     reviews: [
         {
             rating: {
@@ -20,19 +25,13 @@ const bookSchema = new mongoose.Schema({
                 type: String,
             },
             reviewer: {
-                type: String,
-                default: "new user"
+                type: mongoose.Types.ObjectId,
+                ref: 'User',
+                required: [true, 'Please provide user'],
             },
         },
     ],
-
-
-
-
 });
 
-// const Book = new mongoose.model("Book", bookSchema)
-
-// module.export = { Book}
 
 module.exports = mongoose.model('Book', bookSchema)
