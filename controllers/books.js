@@ -2,8 +2,6 @@ const Book = require('../models/bookmodels')
 
 const getAllBooks = async (req, res) => {
     // res.send('get all books');
-
-
     const { title, author, publishYear, excludeOutOfStock, price, sort, fields } = req.query;
     const queryObject = {}
 
@@ -45,36 +43,32 @@ const getAllBooks = async (req, res) => {
 
 }
 
-
-
 const getBook = async (req, res) => {
     const { id } = req.params
-    // const a = "mayank"
     const book = await Book.findById(id)
-    console.log(book)
-    res.status(200).json( book )
-    // res.status(200).json( a )
-
+    res.status(200).json(book)
 }
 
 const insertBook = async (req, res) => {
-
+    req.body.createdBy = req.user.userId
     const book = await Book.create(req.body)
-
     res.status(200).json({ book })
 }
 
 const deleteBook = async (req, res) => {
     // res.send('delete book');
     const { id } = req.params
-    const book = await Book.findByIdAndDelete(id)
+    const { userId } = req.user
+    const book = await Book.findOneAndDelete({ _id: id, createdBy: userId, })
     res.status(200).json({ book })
 }
 
 const updateBook = async (req, res) => {
     // res.send('update book');
     const { id } = req.params
-    const book = await Book.findByIdAndUpdate(id, req.body, {
+    const { userId } = req.user
+    delete req.body.createdBy
+    const book = await Book.findByIdAndUpdate({ _id: id, createdBy: userId }, req.body, {
         new: true,
         runValidators: true
     })
@@ -83,13 +77,11 @@ const updateBook = async (req, res) => {
 
 const addReview = async (req, res) => {
     const { id } = req.params
-    const review = req.body.review
-    const rating = req.body.rating
 
     const new_review = {
         rating: req.body.rating,
         comment: req.body.comment,
-        reviewer: req.body.reviewer
+        reviewer: req.user.userId
     }
     const book = await Book.findById(id);
     book.reviews.push(new_review);
@@ -107,9 +99,15 @@ const getReview = async (req, res) => {
 
 const updateReview = async (req, res) => {
     const { id, r_id } = req.params
-    const book = await Book.findById(id);
-    const reviewIndex = book.reviews.findIndex((r) => r._id.equals(r_id));
-    const { rating, comment, reviewer } = req.body
+    const { userId } = req.user
+    const book = await Book.findById({ id });
+    const reviewIndex = book.reviews.findIndex((r) => {
+        return r._id.equals(r_id) && r.reviewer.equals(userId)
+    })
+    if (reviewIndex === -1) {
+        res.send("no review found")
+    }
+    const { rating, comment } = req.body
     const review = book.reviews[reviewIndex]
     if (rating) {
         book.reviews[reviewIndex].rating = rating
@@ -117,17 +115,21 @@ const updateReview = async (req, res) => {
     if (comment) {
         book.reviews[reviewIndex].comment = comment;
     }
-    if (reviewer) {
-        book.reviews[reviewIndex].reviewer = reviewer;
-    }
     book.save();
     res.status(200).json({ review })
 }
 
 const deleteReview = async (req, res) => {
     const { id, r_id } = req.params
+    const { userId } = req.user
     const book = await Book.findById(id);
-    const reviewIndex = book.reviews.findIndex((r) => r._id.equals(r_id));
+    // const reviewIndex = book.reviews.findIndex((r) => r._id.equals(r_id) && r.createdBy.equals(userId));
+    const reviewIndex = book.reviews.findIndex((r) => {
+        return r._id.equals(r_id) && r.reviewer.equals(userId)
+    })
+    if (reviewIndex === -1) {
+        throw new Error('Review not found');
+      }
     const review = book.reviews[reviewIndex];
     book.reviews.splice(reviewIndex, 1);
     await book.save();

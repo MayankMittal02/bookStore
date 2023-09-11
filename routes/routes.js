@@ -13,7 +13,7 @@ const {
     deleteReview
 } = require('../controllers/books')
 
-router.route('/').get(getAllBooks)
+router.route('/').get( getAllBooks)
 router.route('/:id').get(getBook).delete(authenticateUser, deleteBook).patch(authenticateUser, updateBook)
 router.route('/sellbook').post(authenticateUser, insertBook)
 
