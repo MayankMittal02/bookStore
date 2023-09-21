@@ -1,6 +1,9 @@
 const Book = require('../models/bookmodels')
+const asycnWrapper = require('../middleware/async');
+const CustomAPIError = require('../errors/custom-api')
+const { StatusCodes } = require('http-status-codes')
 
-const getAllBooks = async (req, res) => {
+const getAllBooks = asycnWrapper(async (req, res, next) => {
     // res.send('get all books');
     const { title, author, publishYear, excludeOutOfStock, price, sort, fields } = req.query;
     const queryObject = {}
@@ -38,33 +41,49 @@ const getAllBooks = async (req, res) => {
     result = result.skip(skip).limit(limit);
 
     const book = await result;
+    if (!book) {
+        const error = new CustomAPIError('No book found', StatusCodes.NOT_FOUND)
+        return next(error)
+    }
+    // console.log(...book)
 
     res.status(200).json({ book })
 
-}
+});
 
-const getBook = async (req, res) => {
+const getBook = asycnWrapper(async (req, res, next) => {
     const { id } = req.params
     const book = await Book.findById(id)
+    if (!book) {
+        const error = new CustomAPIError('No book found', StatusCodes.NOT_FOUND)
+        return next(error)
+    }
     res.status(200).json(book)
-}
+});
 
-const insertBook = async (req, res) => {
+
+const insertBook = asycnWrapper(async (req, res) => {
     req.body.createdBy = req.user.userId
     const book = await Book.create(req.body)
     res.status(200).json({ book })
-}
+});
 
-const deleteBook = async (req, res) => {
+const deleteBook = asycnWrapper(async (req, res, next) => {
     // res.send('delete book');
     const { id } = req.params
     const { userId } = req.user
     const book = await Book.findOneAndDelete({ _id: id, createdBy: userId, })
-    res.status(200).json({ book })
-}
+    if (!book) {
+        const error = new CustomAPIError('No book found', StatusCodes.NOT_FOUND)
+        return next(error)
+    }
 
-const updateBook = async (req, res) => {
+    res.status(200).json({ book })
+});
+
+const updateBook = asycnWrapper(async (req, res, next) => {
     // res.send('update book');
+
     const { id } = req.params
     const { userId } = req.user
     delete req.body.createdBy
@@ -72,40 +91,87 @@ const updateBook = async (req, res) => {
         new: true,
         runValidators: true
     })
+    if (!book) {
+        const error = new CustomAPIError('No book found', StatusCodes.NOT_FOUND)
+        return next(error)
+    }
     res.status(200).json({ book })
-}
+
+});
+
+// const addReview = asycnWrapper(async (req, res) => {
+//     const { id } = req.params
+//     const new_review = {
+//         rating: req.body.rating,
+//         comment: req.body.comment,
+//         reviewer: req.user.userId
+//     }
+
+//     const book = await Book.findById(id);
+//     if (!book) { return res.send('Book not exist') }
+//     book.reviews.push(new_review);
+
+//     await book.save();
+//     // return res.send(book)
+
+//     res.status(200).json({ book });
+
+// });
 
 const addReview = async (req, res) => {
+    try{
     const { id } = req.params
-
     const new_review = {
         rating: req.body.rating,
         comment: req.body.comment,
         reviewer: req.user.userId
     }
+    console.log(new_review)
+
     const book = await Book.findById(id);
+    if (!book) { return res.send('Book not exist') }
     book.reviews.push(new_review);
+
     await book.save();
-    res.status(200).json({ book });
+    // return res.send(book)
+
+    res.status(200).json({ book });}
+    catch(error){
+        res.send(error)
+    }
 
 }
 
-const getReview = async (req, res) => {
-    const { id, r_id } = req.params
-    const book = await Book.findById(id);
-    const review = book.reviews.find((r) => r._id.equals(r_id));
-    res.status(200).json({ review });
+const getReview = async (req, res, next) => {
+    try {
+        const { id, r_id } = req.params
+        const book = await Book.findById(id);
+        if (!book) {
+            const error = new CustomAPIError('No book found', StatusCodes.NOT_FOUND)
+            return next(error)
+        }
+        const review = book.reviews.find((r) => r._id.equals(r_id));
+        if (!review) { return res.send('no review found') }
+        res.status(200).json({ review });
+    }
+    catch (error) {
+        next(error)
+    }
 }
 
-const updateReview = async (req, res) => {
+const updateReview = asycnWrapper(async (req, res) => {
     const { id, r_id } = req.params
     const { userId } = req.user
     const book = await Book.findById({ id });
+    if (!book) {
+        const error = new CustomAPIError('No book found', StatusCodes.NOT_FOUND)
+        return next(error)
+    }
     const reviewIndex = book.reviews.findIndex((r) => {
         return r._id.equals(r_id) && r.reviewer.equals(userId)
     })
     if (reviewIndex === -1) {
-        res.send("no review found")
+        return res.status(500).json({ msg: "review not found" })
     }
     const { rating, comment } = req.body
     const review = book.reviews[reviewIndex]
@@ -117,24 +183,30 @@ const updateReview = async (req, res) => {
     }
     book.save();
     res.status(200).json({ review })
-}
+});
 
-const deleteReview = async (req, res) => {
+const deleteReview = asycnWrapper(async (req, res) => {
     const { id, r_id } = req.params
     const { userId } = req.user
     const book = await Book.findById(id);
-    // const reviewIndex = book.reviews.findIndex((r) => r._id.equals(r_id) && r.createdBy.equals(userId));
+    if (!book) {
+        const error = new CustomAPIError('No book found', StatusCodes.NOT_FOUND)
+        return next(error)
+    }
     const reviewIndex = book.reviews.findIndex((r) => {
         return r._id.equals(r_id) && r.reviewer.equals(userId)
     })
     if (reviewIndex === -1) {
-        throw new Error('Review not found');
-      }
+        //  throw new Error('Review not found');
+        return res.status(500).json({ msg: "review not found" })
+
+    }
+
     const review = book.reviews[reviewIndex];
     book.reviews.splice(reviewIndex, 1);
     await book.save();
     res.status(200).json({ review })
-}
+});
 
 module.exports = {
     getAllBooks, getBook, insertBook, deleteBook, updateBook, addReview, updateReview, getReview, deleteReview

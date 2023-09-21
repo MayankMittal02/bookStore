@@ -1,9 +1,8 @@
-// jshint esversion:6
-
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require("body-parser");
 const mongoose = require('mongoose');
+const errorHandlerMiddleware = require('./middleware/error-handler')
 
 
 const app = express();
@@ -17,6 +16,8 @@ const books = require('./routes/routes')
 const authRouter = require('./routes/auth')
 app.use('/books', books)
 app.use('/auth' , authRouter)
+app.use(errorHandlerMiddleware)
+
 
 mongoose.connect("mongodb+srv://mayank:mayank@cluster0.fy2cjib.mongodb.net/book-collection?retryWrites=true&w=majority").then(() => {
     console.log('App connected to database');

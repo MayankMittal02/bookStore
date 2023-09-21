@@ -1,15 +1,33 @@
 const User = require('../models/User')
 const jwt = require('jsonwebtoken')
+const {errorHandlerMiddleware} = require('./error-handler')
+
 
 const auth = async (req, res, next) => {
     const authHeader = req.headers.authorization
-    const token = authHeader
-    const payLoad = jwt.verify(token, 'jwtsecret')
-    req.user = {
-        userId: payLoad.userId,
-        name: payLoad.name
+
+    // if(!authHeader){
+    //      throw new Error("provide token")
+    // }
+
+    try {
+        const token = authHeader
+        const payLoad = jwt.verify(token, process.env.JWT_SECRET)
+        req.user = {
+            userId: payLoad.userId,
+            name: payLoad.name
+        }
+        next()
     }
-    next()
+    catch (err) {
+        // const q = new Error("provide tokennn")
+        // // console.log(err)
+        // res.send(err)
+        next(err)
+        // res.send(err)
+
+
+    }
 }
 
 module.exports = auth
